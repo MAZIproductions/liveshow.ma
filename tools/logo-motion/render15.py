@@ -53,6 +53,27 @@ def text_img(text, font, color, alpha=1.0, spacing=0):
     return img
 
 
+def globe_icon(d, color, alpha=1.0, ss=4):
+    """Icône globe terrestre (site web), diamètre d px."""
+    D = d * ss
+    lw = max(2, round(D * 0.07))
+    r = (D - lw) / 2
+    c = D / 2
+    m = Image.new("L", (D, D), 0)
+    dr = ImageDraw.Draw(m)
+    dr.ellipse((c - r, c - r, c + r, c + r), outline=255, width=lw)            # contour
+    dr.ellipse((c - r * 0.45, c - r, c + r * 0.45, c + r), outline=255, width=lw)  # méridien
+    dr.line((c - r, c, c + r, c), fill=255, width=lw)                           # équateur
+    for k in (-0.55, 0.55):                                                     # parallèles
+        y = c + k * r
+        half = (r * r - (k * r) ** 2) ** 0.5
+        dr.line((c - half, y, c + half, y), fill=255, width=lw)
+    m = m.resize((d, d), Image.LANCZOS).point(lambda v: v * clamp(alpha))
+    img = Image.new("RGBA", (d, d), color + (0,))
+    img.putalpha(m)
+    return img
+
+
 def fit_font(path, text, max_w, size):
     while size > 10:
         f = ImageFont.truetype(str(path), size)
@@ -166,8 +187,16 @@ class Promo:
             yb = round(bottom + 30 * u + (1 - ca) * 20 * u)
             img.alpha_composite(c, ((W - c.width) // 2, yb))
             ua = ease_out_cubic(seg(t, 12.6, 13.2))
-            url = text_img(URL, self.f_url, ORANGE, ua, spacing=round(3 * u))
-            img.alpha_composite(url, ((W - url.width) // 2, yb + c.height + round(18 * u)))
+            url = text_img(URL, self.f_url, (255, 255, 255), ua, spacing=round(3 * u))
+            gd = round(self.f_url.size * 1.1)
+            globe = globe_icon(gd, ORANGE, ua)
+            gap = round(16 * u)
+            gx = (W - (gd + gap + url.width)) // 2
+            uy = yb + c.height + round(18 * u)
+            # globe centré sur la hauteur des lettres
+            xb = self.f_url.getbbox("lw")
+            img.alpha_composite(globe, (gx, uy + 4 + (xb[1] + xb[3]) // 2 - gd // 2))
+            img.alpha_composite(url, (gx + gd + gap, uy))
         return img.convert("RGB")
 
 
